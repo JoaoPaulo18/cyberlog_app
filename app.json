@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "cyberlog_app",
+    "name": "CyberLog",
     "slug": "cyberlog_app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/iconeApp.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/iconeApp.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -16,13 +16,28 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 2,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/iconeApp.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.draxS2.cyberlog_app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/iconeApp.png"
+    },
+    "plugins": [
+      "expo-barcode-scanner",
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "9115a4e5-3a1a-4573-a3a5-5439f01a1b67"
+      }
+    },
+    "owner": "draxs2"
   }
 }

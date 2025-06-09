@@ -1,8 +1,15 @@
-import { registerRootComponent } from 'expo';
+// index.js
+import "react-native-url-polyfill/auto"; // Polyfill para URL/URLSearchParams/etc.
+import { Buffer } from "buffer"; // Polyfill para Buffer do Node
 
-import App from './App';
+if (typeof global.Buffer === "undefined") {
+  global.Buffer = Buffer;
+}
+if (typeof global.process === "undefined") {
+  global.process = require("process");
+}
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+import { registerRootComponent } from "expo";
+import App from "./App";
+
 registerRootComponent(App);

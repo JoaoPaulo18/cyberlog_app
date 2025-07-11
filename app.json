@@ -25,8 +25,8 @@
     },
     "android": {
       "versionCode": 2,
-      "compileSdkVersion": 35,
-      "targetSdkVersion": 35,
+      "compileSdkVersion": 33,
+      "targetSdkVersion": 33,
       "minSdkVersion": 24,
       "adaptiveIcon": {
         "foregroundImage": "./assets/iconeApp.png",

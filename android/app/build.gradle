@@ -118,10 +118,6 @@ android {
         }
     }
     
-    // Configuração para desabilitar verificações de metadados AAR
-    tasks.withType(com.android.build.gradle.internal.tasks.CheckAarMetadataTask).configureEach {
-        enabled = false
-    }
     packagingOptions {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
@@ -177,6 +173,12 @@ dependencies {
     implementation 'com.google.firebase:firebase-messaging'
     implementation 'com.google.firebase:firebase-analytics'
 
+    // Forçar versões específicas de dependências problemáticas
+    implementation 'androidx.core:core:1.12.0'
+    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'androidx.activity:activity:1.7.2'
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
@@ -200,4 +202,9 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+}
+
+// Configuração para desabilitar verificações de metadados AAR
+tasks.withType(com.android.build.gradle.internal.tasks.CheckAarMetadataTask).configureEach {
+    enabled = false
 }

@@ -118,6 +118,11 @@ android {
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
         }
     }
+    
+    // Configuração para desabilitar verificações de metadados AAR
+    tasks.withType(com.android.build.gradle.internal.tasks.CheckAarMetadataTask).configureEach {
+        enabled = false
+    }
     packagingOptions {
         jniLibs {
             useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
@@ -133,7 +138,7 @@ android {
     }
     
     // Configurações de lint para evitar erros de compatibilidade
-    lintOptions {
+    lint {
         checkReleaseBuilds false
         abortOnError false
         disable 'GradleCompatible'

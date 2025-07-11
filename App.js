@@ -43,179 +43,7 @@ const Stack = createNativeStackNavigator();
 
 const App = () => {
   const [session, setSession] = useState(null);
-  const [fcmToken, setFcmToken] = useState("");
-  const [debugLogs, setDebugLogs] = useState([]);
-
-  // Sistema de debug visual para APK
-  const debugLog = async (message, isError = false) => {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = `[${timestamp}] ${message}`;
-
-    // Salvar no AsyncStorage
-    try {
-      const existingLogs = (await AsyncStorage.getItem("debugLogs")) || "[]";
-      const logs = JSON.parse(existingLogs);
-      logs.push({ timestamp, message, isError });
-
-      // Manter apenas os últimos 50 logs
-      if (logs.length > 50) {
-        logs.splice(0, logs.length - 50);
-      }
-
-      await AsyncStorage.setItem("debugLogs", JSON.stringify(logs));
-      setDebugLogs(logs);
-
-      // Se for erro crítico, mostrar alert
-      if (isError) {
-        Alert.alert("❌ ERRO DEBUG", logEntry);
-      }
-    } catch (e) {
-      // Fallback se AsyncStorage falhar
-      if (isError) {
-        Alert.alert("❌ ERRO CRÍTICO", message);
-      }
-    }
-  };
-
-  // Função para mostrar logs de debug
-  const showDebugLogs = async () => {
-    try {
-      const logs = await AsyncStorage.getItem("debugLogs");
-      if (logs) {
-        const parsedLogs = JSON.parse(logs);
-        const lastLogs = parsedLogs
-          .slice(-10)
-          .map((log) => `[${log.timestamp}] ${log.message}`)
-          .join("\n\n");
-        Alert.alert("📝 DEBUG LOGS (últimos 10)", lastLogs);
-      } else {
-        Alert.alert("📝 DEBUG LOGS", "Nenhum log encontrado");
-      }
-    } catch (e) {
-      Alert.alert("❌ ERRO", "Falha ao carregar logs: " + e.message);
-    }
-  };
-
-  // Função para limpar logs
-  const clearDebugLogs = async () => {
-    try {
-      await AsyncStorage.removeItem("debugLogs");
-      setDebugLogs([]);
-      Alert.alert("✅ SUCESSO", "Logs de debug limpos");
-    } catch (e) {
-      Alert.alert("❌ ERRO", "Falha ao limpar logs: " + e.message);
-    }
-  };
-
-  // Função para ver a última mensagem FCM capturada
-  const showLastFCMMessage = async () => {
-    try {
-      const lastMessage = await AsyncStorage.getItem("lastFCMMessage");
-      if (lastMessage) {
-        const parsed = JSON.parse(lastMessage);
-        const summary = `
-ESTRUTURA DA MENSAGEM FCM:
-        
-notification: ${JSON.stringify(parsed.notification, null, 2)}
-
-data: ${JSON.stringify(parsed.data, null, 2)}
-
-messageId: ${parsed.messageId}
-from: ${parsed.from}
-`;
-        Alert.alert("📨 ÚLTIMA MENSAGEM FCM", summary);
-      } else {
-        Alert.alert("📨 FCM MESSAGE", "Nenhuma mensagem FCM capturada ainda");
-      }
-    } catch (e) {
-      Alert.alert("❌ ERRO", "Falha ao carregar mensagem FCM: " + e.message);
-    }
-  };
-
-  // Função de teste para notificações locais
-  const testLocalNotification = async () => {
-    try {
-      await debugLog("🧪 Testando notificação local...");
-
-      // Verificar permissões
-      const { status } = await Notifications.getPermissionsAsync();
-      await debugLog(`📋 Status das permissões: ${status}`);
-
-      if (status !== "granted") {
-        Alert.alert(
-          "Erro",
-          "Permissões de notificação não concedidas. Status: " + status
-        );
-        return;
-      }
-
-      // Agendar notificação de teste
-      const result = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🧪 Teste Manual",
-          body: "Esta é uma notificação de teste criada manualmente",
-          data: { test: true },
-          sound: "default",
-          priority: Notifications.AndroidImportance.HIGH,
-          categoryIdentifier: "test",
-        },
-        trigger: null, // Mostrar imediatamente
-      });
-
-      await debugLog(`✅ Notificação agendada com ID: ${result}`);
-      Alert.alert("Sucesso", "Notificação de teste enviada! ID: " + result);
-    } catch (error) {
-      await debugLog(`❌ Erro ao enviar notificação: ${error.message}`, true);
-    }
-  };
-
-  // Função para simular notificação FCM (para debug)
-  const testFCMSimulation = async () => {
-    try {
-      await debugLog("🎭 Simulando notificação FCM...");
-
-      // Simular estrutura de mensagem FCM
-      const fakeRemoteMessage = {
-        notification: {
-          title: "🎭 Teste Simulado",
-          body: "Esta é uma simulação de notificação FCM",
-        },
-        data: {
-          test: "true",
-        },
-      };
-
-      // Simular o mesmo fluxo do listener FCM
-      const title =
-        fakeRemoteMessage?.notification?.title || "Nova Notificação";
-      const body = fakeRemoteMessage?.notification?.body || "Mensagem recebida";
-
-      await debugLog(`📱 Título: ${title}, Corpo: ${body}`);
-
-      try {
-        await debugLog("🔄 Preparando Alert simulado...");
-
-        const showAlert = () => {
-          try {
-            Alert.alert(String(title), String(body));
-            debugLog("✅ Alert simulado chamado com sucesso");
-          } catch (alertError) {
-            debugLog(`❌ ERRO no Alert simulado: ${alertError.message}`, true);
-          }
-        };
-
-        setTimeout(showAlert, 200);
-        await debugLog("✅ setTimeout simulado configurado");
-      } catch (alertSetupError) {
-        await debugLog(
-          `❌ ERRO setup Alert simulado: ${alertSetupError.message}`,
-          true
-        );
-      }
-    } catch (error) {
-      await debugLog(`❌ Erro na simulação FCM: ${error.message}`, true);
-    }
-  }; // Request user permission for notifications
+  const [fcmToken, setFcmToken] = useState(""); // Request user permission for notifications
   const requestUserPermission = async () => {
     console.log("[Debug] Solicitando permissão para notificações...");
 
@@ -340,198 +168,21 @@ from: ${parsed.from}
     };
 
     // Chamar inicialização
-    initializeApp(); // Configurar listeners FCM com debug visual
+    initializeApp(); // Configurar listeners FCM
     let unsubscribe;
-    let unsubscribeTokenRefresh;
 
     try {
-      debugLog("🚀 Configurando listener FCM...");
+      console.log("Configurando listener FCM...");
 
-      // Listener FCM mais simples e seguro
+      // Listener FCM mais simples possivel
       unsubscribe = messaging().onMessage(async (remoteMessage) => {
-        try {
-          await debugLog("🔔 FCM Message recebida!");
-
-          // CAPTURAR ESTRUTURA COMPLETA DA MENSAGEM REAL
-          try {
-            await debugLog("📊 Analisando estrutura da mensagem...");
-
-            // Salvar mensagem completa para análise
-            const messageStructure = {
-              hasNotification: !!remoteMessage?.notification,
-              hasData: !!remoteMessage?.data,
-              notificationKeys: remoteMessage?.notification
-                ? Object.keys(remoteMessage.notification)
-                : [],
-              dataKeys: remoteMessage?.data
-                ? Object.keys(remoteMessage.data)
-                : [],
-              notificationTitle: remoteMessage?.notification?.title,
-              notificationBody: remoteMessage?.notification?.body,
-              dataTitle: remoteMessage?.data?.title,
-              dataBody: remoteMessage?.data?.body,
-            };
-
-            await debugLog(`📋 Estrutura: ${JSON.stringify(messageStructure)}`);
-
-            // Salvar mensagem completa no AsyncStorage para análise detalhada
-            // CORREÇÃO: JSON.stringify seguro para evitar referências circulares
-            const safeFCMMessage = {
-              messageId: remoteMessage.messageId,
-              from: remoteMessage.from,
-              notification: remoteMessage.notification,
-              data: remoteMessage.data,
-              ttl: remoteMessage.ttl,
-              sentTime: remoteMessage.sentTime,
-            };
-
-            await AsyncStorage.setItem(
-              "lastFCMMessage",
-              JSON.stringify(safeFCMMessage)
-            );
-            await debugLog("💾 Mensagem salva para análise");
-          } catch (analysisError) {
-            await debugLog(
-              `❌ ERRO na análise: ${analysisError.message}`,
-              true
-            );
-          }
-
-          // Extrair título e corpo de forma mais defensiva
-          let title = "Nova Notificação";
-          let body = "Mensagem recebida";
-
-          try {
-            if (remoteMessage?.notification?.title) {
-              title = String(remoteMessage.notification.title).trim();
-            } else if (remoteMessage?.data?.title) {
-              title = String(remoteMessage.data.title).trim();
-            }
-
-            if (remoteMessage?.notification?.body) {
-              body = String(remoteMessage.notification.body).trim();
-            } else if (remoteMessage?.data?.body) {
-              body = String(remoteMessage.data.body).trim();
-            }
-
-            await debugLog(`📱 Título final: "${title}"`);
-            await debugLog(`📱 Corpo final: "${body}"`);
-          } catch (extractError) {
-            await debugLog(
-              `❌ ERRO na extração: ${extractError.message}`,
-              true
-            );
-          }
-
-          // Mostrar APENAS notificação local (SEM Alert.alert)
-          try {
-            await debugLog("🔄 Criando notificação local...");
-
-            const result = await Notifications.scheduleNotificationAsync({
-              content: {
-                title: title,
-                body: body,
-                data: remoteMessage?.data || {},
-                sound: "default",
-                priority: Notifications.AndroidImportance.HIGH,
-                categoryIdentifier: "message",
-              },
-              trigger: null,
-            });
-
-            await debugLog(`✅ Notificação local criada: ${result}`);
-          } catch (notificationError) {
-            await debugLog(
-              `❌ ERRO notificação local: ${notificationError.message}`,
-              true
-            );
-
-            // Fallback: salvar para mostrar depois
-            try {
-              const pendingNotifications =
-                (await AsyncStorage.getItem("pendingNotifications")) || "[]";
-              const notifications = JSON.parse(pendingNotifications);
-              notifications.push({
-                timestamp: new Date().toISOString(),
-                title,
-                body,
-                shown: false,
-              });
-              await AsyncStorage.setItem(
-                "pendingNotifications",
-                JSON.stringify(notifications)
-              );
-              await debugLog("💾 Notificação salva para mostrar depois");
-            } catch (saveError) {
-              await debugLog(
-                `❌ ERRO ao salvar notificação: ${saveError.message}`,
-                true
-              );
-            }
-          }
-        } catch (messageError) {
-          await debugLog(
-            `❌ ERRO no listener FCM: ${messageError.message}`,
-            true
-          );
-        }
+        console.log("FCM Message recebida!");
+        console.log("remoteMessage:", remoteMessage);
       });
 
-      debugLog("✅ Listener FCM configurado");
+      console.log("Listener FCM configurado com sucesso");
     } catch (error) {
-      debugLog(`❌ ERRO ao configurar listener FCM: ${error.message}`, true);
-    }
-
-    // Configurar outros listeners FCM de forma mais simples
-    try {
-      debugLog("🚀 Configurando listeners adicionais...");
-
-      // Background tap - versão simplificada
-      messaging().onNotificationOpenedApp((remoteMessage) => {
-        try {
-          debugLog("🔔 App aberto por notificação background");
-          const title = remoteMessage?.notification?.title || "App aberto";
-          const body = remoteMessage?.notification?.body || "Por notificação";
-          setTimeout(() => Alert.alert(title, body), 500);
-        } catch (error) {
-          debugLog(`❌ Erro background tap: ${error.message}`, true);
-        }
-      });
-
-      // Quit state - versão simplificada
-      messaging()
-        .getInitialNotification()
-        .then((remoteMessage) => {
-          if (remoteMessage) {
-            try {
-              debugLog("🔔 App iniciado por notificação");
-              const title =
-                remoteMessage?.notification?.title || "App iniciado";
-              const body =
-                remoteMessage?.notification?.body || "Por notificação";
-              setTimeout(() => Alert.alert(title, body), 1000);
-            } catch (error) {
-              debugLog(`❌ Erro quit tap: ${error.message}`, true);
-            }
-          }
-        })
-        .catch((error) => {
-          debugLog(`❌ Erro initial notification: ${error.message}`, true);
-        });
-
-      // Token refresh - versão simplificada
-      unsubscribeTokenRefresh = messaging().onTokenRefresh((token) => {
-        try {
-          debugLog("🔄 Token FCM atualizado");
-          setFcmToken(token);
-        } catch (error) {
-          debugLog(`❌ Erro token refresh: ${error.message}`, true);
-        }
-      });
-
-      debugLog("✅ Todos os listeners FCM configurados");
-    } catch (error) {
-      debugLog(`❌ ERRO listeners adicionais: ${error.message}`, true);
+      console.log("Erro ao configurar listener FCM:", error);
     }
 
     // Listener para quando o usuário toca na notificação local (Expo Notifications)
@@ -556,12 +207,11 @@ from: ${parsed.from}
     return () => {
       try {
         unsubscribe && unsubscribe();
-        unsubscribeTokenRefresh && unsubscribeTokenRefresh();
         subscription.unsubscribe();
         notificationListener.remove();
         responseListener.remove();
       } catch (error) {
-        console.error("[Debug] Erro ao limpar listeners:", error);
+        console.error("Erro ao limpar listeners:", error);
       }
     };
   }, []);
@@ -577,11 +227,6 @@ from: ${parsed.from}
     if (!token || !userId) return;
 
     try {
-      Alert.alert(
-        "Debug",
-        `Salvando Firebase FCM token para usuário ${userId}`
-      );
-
       const { data: profile, error: fetchError } = await supabase
         .from("profiles")
         .select("motoboy_token")
@@ -589,12 +234,12 @@ from: ${parsed.from}
         .single();
 
       if (fetchError) {
-        Alert.alert("Debug", `Erro ao buscar perfil: ${fetchError.message}`);
+        console.log("Erro ao buscar perfil:", fetchError.message);
         return;
       }
 
       if (profile?.motoboy_token === token) {
-        Alert.alert("Debug", `Firebase FCM token já salvo e é o mesmo`);
+        console.log("FCM token já salvo e é o mesmo");
         return;
       }
 
@@ -604,45 +249,14 @@ from: ${parsed.from}
         .eq("id", userId);
 
       if (updateError) {
-        Alert.alert(
-          "Debug",
-          `Erro ao atualizar Firebase FCM token: ${updateError.message}`
-        );
+        console.log("Erro ao atualizar FCM token:", updateError.message);
       } else {
-        Alert.alert("Success", `Firebase FCM token salvo no Supabase!`);
+        console.log("FCM token salvo no Supabase!");
       }
     } catch (err) {
-      Alert.alert("Debug", `Erro geral: ${err.message}`);
+      console.log("Erro geral:", err.message);
     }
   }
-
-  // Função para ver mensagens recebidas em background
-  const showBackgroundMessages = async () => {
-    try {
-      const backgroundMessages = await AsyncStorage.getItem(
-        "backgroundMessages"
-      );
-      if (backgroundMessages) {
-        const messages = JSON.parse(backgroundMessages);
-        const summary = messages
-          .map(
-            (msg, index) =>
-              `${index + 1}. [${msg.timestamp.substring(11, 19)}] ${
-                msg.title
-              }: ${msg.body}`
-          )
-          .join("\n\n");
-        Alert.alert("📱 MENSAGENS BACKGROUND", summary || "Nenhuma mensagem");
-      } else {
-        Alert.alert("📱 BACKGROUND", "Nenhuma mensagem background encontrada");
-      }
-    } catch (e) {
-      Alert.alert(
-        "❌ ERRO",
-        "Falha ao carregar mensagens background: " + e.message
-      );
-    }
-  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#3578e5" }}>
@@ -685,68 +299,6 @@ from: ${parsed.from}
           )}
         </Stack.Navigator>
       </NavigationContainer>
-
-      {/* Painel de debug para APK - remover em produção */}
-      {session && (
-        <View
-          style={{
-            position: "absolute",
-            bottom: 20,
-            left: 20,
-            right: 20,
-            backgroundColor: "rgba(0,0,0,0.9)",
-            padding: 15,
-            borderRadius: 8,
-          }}
-        >
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              marginBottom: 6,
-            }}
-          >
-            <Button
-              title="🧪 Local"
-              onPress={testLocalNotification}
-              color="#007AFF"
-            />
-            <Button
-              title="🎭 FCM"
-              onPress={testFCMSimulation}
-              color="#34C759"
-            />
-            <Button title="📝 Logs" onPress={showDebugLogs} color="#FF9500" />
-            <Button
-              title="� MSG"
-              onPress={showLastFCMMessage}
-              color="#AF52DE"
-            />
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "center",
-            }}
-          >
-            <Button
-              title="�🗑️ Clear All"
-              onPress={clearDebugLogs}
-              color="#FF3B30"
-            />
-          </View>
-          <Text
-            style={{
-              color: "white",
-              fontSize: 10,
-              textAlign: "center",
-              marginTop: 5,
-            }}
-          >
-            Debug: {debugLogs.length} logs | Local=Expo, FCM=Sim, MSG=Real FCM
-          </Text>
-        </View>
-      )}
     </SafeAreaView>
   );
 };

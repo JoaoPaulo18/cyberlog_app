@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  ScrollView,
 } from "react-native";
 import { Camera, CameraView } from "expo-camera";
 import { Picker } from "@react-native-picker/picker";
@@ -21,6 +22,7 @@ const OrderDetailScreen = ({ route, navigation }) => {
 
   // campos de entrega
   const [receiverName, setReceiverName] = useState("");
+  const [insucesso, setInsucesso] = useState("Cliente Ausente");
   const [recipientType, setRecipientType] = useState("O próprio");
   const [orderNumber, setOrderNumber] = useState(order.order_number || "");
   const [warning, setWarning] = useState("");
@@ -41,6 +43,7 @@ const OrderDetailScreen = ({ route, navigation }) => {
     (async () => {
       const { status } = await Camera.requestCameraPermissionsAsync();
       setHasPermission(status === "granted");
+      setOrderNumber(order.codigo_barras);
     })();
   }, []);
 
@@ -72,6 +75,40 @@ const OrderDetailScreen = ({ route, navigation }) => {
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.5 });
     setPhotoUri(photo.uri);
     setCameraOpen(false);
+  };
+
+  const handleInsucesso = async () => {
+    const { data, error } = await supabase
+      .from("pedidos")
+      .update({
+        status: "tentativa_falha",
+        data_insucesso: new Date().toISOString(),
+        motivo_devolucao: insucesso,
+      })
+      .eq("codigo_barras", order.codigo_barras.toUpperCase())
+      .select();
+
+    if (error || !data.length) {
+      playBeep("error");
+      setWarning("Não foi possivel concluir o insucesso");
+    } else {
+      playBeep("beep");
+      navigation.navigate("OrdersScreen");
+    }
+  };
+
+  const handleInsucessoOffline = async () => {
+    const stored = await AsyncStorage.getItem("offlineDeliveries");
+    const arr = stored ? JSON.parse(stored) : [];
+    arr.push({
+      codigo_barras: order.codigo_barras,
+      data_insucesso: new Date().toISOString(),
+      motivo_devolucao: insucesso,
+    });
+    await AsyncStorage.setItem("offlineDeliveries", JSON.stringify(arr));
+
+    playBeep("beep");
+    navigation.navigate("OrdersScreen");
   };
 
   const handleDeliver = async () => {
@@ -164,7 +201,7 @@ const OrderDetailScreen = ({ route, navigation }) => {
     await AsyncStorage.setItem("offlineDeliveries", JSON.stringify(arr));
 
     playBeep("beep");
-    navigation.goBack();
+    navigation.navigate("OrdersScreen");
   };
 
   if (scanning) {
@@ -188,8 +225,8 @@ const OrderDetailScreen = ({ route, navigation }) => {
   }
 
   return (
-    <View style={{ flex: 1, padding: 20 }}>
-      <Text style={{ fontSize: 24, marginBottom: 20 }}>
+    <ScrollView style={{ flex: 1, paddingHorizontal: 20, marginVertical: 20 }}>
+      <Text style={{ fontSize: 24, marginVertical: 20 }}>
         Pedido: {order.codigo_barras}
       </Text>
 
@@ -258,8 +295,8 @@ const OrderDetailScreen = ({ route, navigation }) => {
 
       <Text>Número do Pedido (cole ou escaneie):</Text>
       <TextInput
-        value={orderNumber}
-        onChangeText={setOrderNumber}
+        value={order.codigo_barras}
+        // onChangeText={setOrderNumber}
         placeholder="Número do Pedido"
         style={styles.input}
       />
@@ -288,7 +325,46 @@ const OrderDetailScreen = ({ route, navigation }) => {
           <Text style={{ color: "red", marginTop: 10 }}>{warning}</Text>
         ) : null}
       </View>
-    </View>
+
+      {order.status !== "devolucao" && (
+        <View>
+          <Text style={{ fontSize: 24, marginVertical: 20 }}>Insucesso</Text>
+
+          <Text>Selecione o motivo do insucesso:</Text>
+
+          <Picker
+            selectedValue={insucesso}
+            onValueChange={setInsucesso}
+            style={styles.picker}
+          >
+            <Picker.Item label="Cliente Ausente" value="Cliente Ausente" />
+            <Picker.Item label="Recusa" value="Recusa" />
+            <Picker.Item label="Avaria" value="Avaria" />
+            <Picker.Item label="Endereço errado" value="Endereço errado" />
+          </Picker>
+
+          <View>
+            <TouchableOpacity style={styles.button} onPress={handleInsucesso}>
+              <Text style={{ color: "#fff", textTransform: "uppercase" }}>
+                Insucesso
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                { backgroundColor: "tomato", marginTop: 10 },
+              ]}
+              onPress={handleInsucessoOffline}
+            >
+              <Text style={{ color: "#fff", textTransform: "uppercase" }}>
+                Insucesso Offline
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </ScrollView>
   );
 };
 
@@ -321,6 +397,7 @@ const styles = StyleSheet.create({
   header: {
     position: "absolute",
     top: 0,
+
     width: "100%",
     padding: 15,
     backgroundColor: "#000",
@@ -343,7 +420,7 @@ const styles = StyleSheet.create({
   },
   camera_foto: {
     width: "100%",
-    height: 300,
+    height: "100%",
   },
   cameraActions: {
     position: "absolute",

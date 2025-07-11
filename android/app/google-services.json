@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "436782270916",
+    "project_id": "cyberlog-a0868",
+    "storage_bucket": "cyberlog-a0868.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:436782270916:android:12be098cd38bfe6ac0bc91",
+        "android_client_info": {
+          "package_name": "com.draxS2.cyberlog_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABKDiyqCRL_ZFyqTQm9EiTQNbCpjaAuTI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:436782270916:android:54cc0b03425e98f0c0bc91",
+        "android_client_info": {
+          "package_name": "com.draxS2.cyberlog_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyABKDiyqCRL_ZFyqTQm9EiTQNbCpjaAuTI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

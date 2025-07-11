@@ -1,0 +1,15 @@
+android/local.properties
+android/app/debug.keystore
+android/app/release-key.keystore
+android/app/my-release-key.keystore
+android/app/my-upload-key.keystore
+.gradle/
+android/.gradle/
+android/build/
+android/app/build/
+node_modules/
+.expo/
+dist/
+_.log
+_.lock
+.DS_Store

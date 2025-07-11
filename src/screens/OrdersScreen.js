@@ -20,14 +20,30 @@ const OrdersScreen = ({ navigation }) => {
   const [tab, setTab] = useState("Entregas");
   const [pesquisa, setPesquisa] = useState("");
   const [doneOfflineCodes, setDoneOfflineCodes] = useState(new Set());
+  const [lojas, setLojas] = useState([]);
+  const [motoboyStatus, setMotoboyStatus] = useState("");
 
   const fetchOrders = async () => {
+    let user = await supabase.auth.getSession();
+
     setLoading(true);
     const { data, error } = await supabase
       .from("pedidos")
       .select("*")
-      .eq("status", "em rota");
+      .eq("status", "em rota")
+      .eq("entregador_id", user.data.session.user.id);
     if (!error) setOrders(data);
+    setLoading(false);
+  };
+  // LOJAS PARA MOTOBOY
+  const fetchLojas = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("empresas")
+      .select("*")
+      .eq("tipo", "loja");
+
+    if (!error) setLojas(data);
     setLoading(false);
   };
 
@@ -40,7 +56,20 @@ const OrdersScreen = ({ navigation }) => {
 
   useEffect(() => {
     fetchOrders();
+    fetchLojas();
     loadOfflineCodes();
+
+    fetchMotoboyStatus();
+    async function fetchMotoboyStatus() {
+      let user = await supabase.auth.getSession();
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("motoboy_status")
+        .eq("id", user.data.session.user.id);
+
+      setMotoboyStatus(data[0]?.motoboy_status);
+    }
   }, []);
 
   const renderOrder = ({ item }) => {
@@ -56,13 +85,19 @@ const OrdersScreen = ({ navigation }) => {
         }
         disabled={isDone}
       >
-        {isDone && (
-          <Text style={styles.orderTitle}>Pedido entregue offline</Text>
-        )}
+        {isDone && <Text style={styles.orderTitle}>Pedido salvo offline</Text>}
         <Text style={styles.orderTitle}>{item.Cliente}</Text>
-        <Text style={styles.orderTitle}>Entrega #{item.codigo_barras}</Text>
-        <Text style={styles.status}>
-          {!isDone ? "Em andamento" : "Entregue"}
+        {/* <Text style={styles.orderTitle}>Entrega #{item.codigo_barras}</Text> */}
+        {/* <Text style={styles.status}>{!isDone ? "Em andamento" : "Salvo"}</Text> */}
+        <Text style={styles.orderTitle}>
+          {lojas.find((loja) => loja.id === item.loja_id)?.nome}
+
+          {item.data_criacao
+            ? ` - ${new Date(item.data_criacao).toLocaleDateString()}`
+            : ""}
+        </Text>
+        <Text style={styles.address}>
+          Loja: {lojas.find((loja) => loja.id === item.loja_id)?.endereco}
         </Text>
         <View style={styles.addressContainer}>
           <Icon name="map-pin" size={16} color="#3578e5" />
@@ -76,6 +111,31 @@ const OrdersScreen = ({ navigation }) => {
     );
   };
 
+  const ficarOnlineOffline = async () => {
+    let user = await supabase.auth.getSession();
+    if (motoboyStatus === "online") {
+      // Se o motoboy está online, mudar para offline
+      await supabase
+        .from("profiles")
+        .update({ motoboy_status: "offline" })
+        .eq("id", user.data.session.user.id);
+      setMotoboyStatus("offline");
+    } else {
+      // Se o motoboy está offline, mudar para online
+      await supabase
+        .from("profiles")
+        .update({ motoboy_status: "online" })
+        .eq("id", user.data.session.user.id);
+      setMotoboyStatus("online");
+
+      const data = await supabase
+        .from("pedidos")
+        .update({ entregador_id: user.data.session.user.id })
+        .eq("status", "em rota")
+        .eq("entregador_id", "c7222573-d5d2-4df6-9d18-18e17b71e655");
+    }
+  };
+
   const buscarEntregasOffline = async () => {
     setLoading(true);
     try {
@@ -83,38 +143,51 @@ const OrdersScreen = ({ navigation }) => {
       const entregas = entregasStr ? JSON.parse(entregasStr) : [];
       if (entregas.length > 0) {
         for (const e of entregas) {
-          let photoUrl = null;
-          if (e.foto_local) {
-            const fileName = `entregas/${e.codigo_barras}.jpg`;
-            const { error: uploadError } = await supabase.storage
-              .from("imagens-entregas")
-              .upload(
-                fileName,
-                { uri: e.foto_local, name: fileName, type: "image/jpeg" },
-                { upsert: true }
-              );
-            if (!uploadError) {
-              const { data, publicURL } = supabase.storage
+          if (e.data_insucesso) {
+            const { data, error } = await supabase
+              .from("pedidos")
+              .update({
+                status: "tentativa_falha",
+                data_insucesso: new Date().toISOString(),
+                motivo_devolucao: e.motivo_devolucao,
+              })
+              .eq("codigo_barras", e.codigo_barras)
+              .select();
+          } else {
+            let photoUrl = null;
+            if (e.foto_local) {
+              const fileName = `entregas/${e.codigo_barras}.jpg`;
+              const { error: uploadError } = await supabase.storage
                 .from("imagens-entregas")
-                .getPublicUrl(fileName);
-              photoUrl = publicURL || data?.publicUrl;
-            } else {
-              console.error("Erro no upload da imagem offline:", uploadError);
+                .upload(
+                  fileName,
+                  { uri: e.foto_local, name: fileName, type: "image/jpeg" },
+                  { upsert: true }
+                );
+              if (!uploadError) {
+                const { data, publicURL } = supabase.storage
+                  .from("imagens-entregas")
+                  .getPublicUrl(fileName);
+                photoUrl = publicURL || data?.publicUrl;
+              } else {
+                console.error("Erro no upload da imagem offline:", uploadError);
+              }
             }
-          }
 
-          const updates = {
-            Nome_recebedor_entrega: e.Nome_recebedor_entrega,
-            Tipo_recebedor_entrega: e.Tipo_recebedor_entrega,
-            data_entrega: e.data_entrega,
-            status: "entregue",
-          };
-          if (photoUrl) updates.imagem_entrega = photoUrl;
-          await supabase
-            .from("pedidos")
-            .update(updates)
-            .eq("codigo_barras", e.codigo_barras);
+            const updates = {
+              Nome_recebedor_entrega: e.Nome_recebedor_entrega,
+              Tipo_recebedor_entrega: e.Tipo_recebedor_entrega,
+              data_entrega: e.data_entrega,
+              status: "entregue",
+            };
+            if (photoUrl) updates.imagem_entrega = photoUrl;
+            await supabase
+              .from("pedidos")
+              .update(updates)
+              .eq("codigo_barras", e.codigo_barras);
+          }
         }
+
         await AsyncStorage.removeItem("offlineDeliveries");
         fetchOrders();
         loadOfflineCodes();
@@ -139,7 +212,13 @@ const OrdersScreen = ({ navigation }) => {
         (e) =>
           e.Endereco.includes(pesquisa) ||
           e.codigo_barras.includes(pesquisa) ||
-          e.Cliente.includes(pesquisa)
+          e.Cliente.includes(pesquisa) ||
+          lojas
+            ?.find((loja) => loja.id === e.loja_id)
+            ?.nome.includes(pesquisa) ||
+          lojas
+            ?.find((loja) => loja.id === e.loja_id)
+            ?.endereco.includes(pesquisa)
       )
     : orders;
 
@@ -191,23 +270,34 @@ const OrdersScreen = ({ navigation }) => {
       </View>
 
       <FlatList
-        data={filteredOrders}
+        data={filteredOrders.reverse()}
         keyExtractor={(item) => item.id.toString()}
         renderItem={renderOrder}
         contentContainerStyle={{ paddingBottom: 20 }}
         onRefresh={fetchOrders}
         refreshing={loading}
       />
-
-      <Button title="Sincronizar Entregas" onPress={buscarEntregasOffline} />
+      <View style={{ flexDirection: "column", gap: 10 }}>
+        <Button title="Sincronizar Entregas" onPress={buscarEntregasOffline} />
+        <Button
+          color={motoboyStatus === "online" ? "red" : "green"}
+          title={motoboyStatus === "online" ? "Ficar Offline" : "Ficar Online"}
+          onPress={ficarOnlineOffline}
+        />
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: "#f2f4f7" },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
-  tabs: { flexDirection: "row", marginBottom: 15 },
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: "#f2f4f7",
+    marginVertical: 20,
+  },
+  title: { fontSize: 22, fontWeight: "bold" },
+  tabs: { flexDirection: "row", marginBottom: 10 },
   tabItem: { marginRight: 20, alignItems: "center" },
   tabText: { fontSize: 16, color: "#555" },
   activeTabText: { color: "#3578e5", fontWeight: "bold" },

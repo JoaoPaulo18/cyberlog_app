@@ -229,17 +229,6 @@ const OrdersScreen = ({ navigation }) => {
                   }}
                   style={styles.camera}
                   facing="back"
-                  barCodeScannerSettings={{
-                    barCodeTypes: [
-                      "code128",
-                      "ean13",
-                      "upc_a",
-                      "upc_e",
-                      "code39",
-                      "code93",
-                      "codabar",
-                    ],
-                  }}
                 />
               </View>
 

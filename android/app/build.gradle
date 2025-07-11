@@ -100,6 +100,9 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "1.0.0"
+        
+        // Desabilitar extração automática de idiomas suportados
+        resourceConfigurations += ["en", "pt"]
     }
     signingConfigs {
         debug {
@@ -124,14 +127,6 @@ android {
         }
     }
     
-    packagingOptions {
-        jniLibs {
-            useLegacyPackaging (findProperty('expo.useLegacyPackaging')?.toBoolean() ?: false)
-        }
-        pickFirst '**/libc++_shared.so'
-        pickFirst '**/libjsc.so'
-    }
-    
     // Configurações modernas do packaging
     packagingOptions {
         jniLibs {
@@ -150,7 +145,7 @@ android {
     // Configurações modernas de recursos
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
-        generateLocaleConfig true
+        generateLocaleConfig false
     }
 }
 

@@ -88,6 +88,12 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace 'com.draxS2.cyberlog_app'
+    
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    
     defaultConfig {
         applicationId 'com.draxS2.cyberlog_app'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -126,21 +132,25 @@ android {
         pickFirst '**/libjsc.so'
     }
     
-    // Desabilitar verificações de AAR metadata
-    dependenciesInfo {
-        includeInApk false
-        includeInBundle false
+    // Configurações modernas do packaging
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging false
+        }
+        pickFirst '**/libc++_shared.so'
+        pickFirst '**/libjsc.so'
     }
     
-    // Configurações de lint para evitar erros de compatibilidade
+    // Configurações modernas de lint
     lint {
         checkReleaseBuilds false
         abortOnError false
-        disable 'GradleCompatible'
     }
     
+    // Configurações modernas de recursos
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        generateLocaleConfig true
     }
 }
 

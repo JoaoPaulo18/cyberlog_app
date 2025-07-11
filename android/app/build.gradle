@@ -84,26 +84,44 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
     ndkVersion rootProject.ext.ndkVersion
-
     compileSdk rootProject.ext.compileSdkVersion
-
     namespace 'com.draxS2.cyberlog_app'
-    
+
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    
+
     defaultConfig {
         applicationId 'com.draxS2.cyberlog_app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "1.0.0"
-        
-        // Desabilitar extração automática de idiomas suportados
+
+        ndk {
+            abiFilters "arm64-v8a"
+        }
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_shared"
+            }
+        }
+
         resourceConfigurations += ["en", "pt"]
     }
+
+    // ➕ Força build apenas para arm64-v8a e ativa universal APK
+    splits {
+        abi {
+            enable true
+            reset()
+            include "arm64-v8a"
+            universalApk true
+        }
+    }
+
     signingConfigs {
         debug {
             storeFile file('debug.keystore')
@@ -112,13 +130,12 @@ android {
             keyPassword 'android'
         }
     }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
             shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
             minifyEnabled enableProguardInReleaseBuilds
@@ -126,8 +143,7 @@ android {
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)
         }
     }
-    
-    // Configurações modernas do packaging
+
     packagingOptions {
         jniLibs {
             useLegacyPackaging false
@@ -135,19 +151,18 @@ android {
         pickFirst '**/libc++_shared.so'
         pickFirst '**/libjsc.so'
     }
-    
-    // Configurações modernas de lint
+
     lint {
         checkReleaseBuilds false
         abortOnError false
     }
-    
-    // Configurações modernas de recursos
+
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
         generateLocaleConfig false
     }
 }
+
 
 // Apply static values from `gradle.properties` to the `android.packagingOptions`
 // Accepts values in comma delimited lists, example:

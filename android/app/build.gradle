@@ -106,11 +106,11 @@ android {
       universalApk true
     }
   }
-      externalNativeBuild {
-    cmake {
-      arguments "-DANDROID_STL=c++_shared", "-DANDROID_DISABLE_FORMAT_STRING_CHECKS=ON"
-    }
-  }
+//       externalNativeBuild {
+//     cmake {
+//       arguments "-DANDROID_STL=c++_shared", "-DANDROID_DISABLE_FORMAT_STRING_CHECKS=ON"
+//     }
+//   }
     }
     signingConfigs {
         debug {

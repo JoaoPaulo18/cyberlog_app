@@ -30,6 +30,41 @@ import { firebase } from "@react-native-firebase/app";
 
 console.log("[Debug] ✅ Firebase messaging importado!");
 
+// Sistema de captura de erros global
+const setupErrorHandling = () => {
+  // Capturar erros não tratados
+  const defaultHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error("[ERROR HANDLER] Erro capturado:", error);
+    AsyncStorage.setItem(
+      "lastError",
+      JSON.stringify({
+        error: error.toString(),
+        stack: error.stack,
+        isFatal,
+        timestamp: new Date().toISOString(),
+      })
+    );
+    defaultHandler(error, isFatal);
+  });
+
+  // Capturar promises rejeitadas
+  const handleUnhandledRejection = (event) => {
+    console.error("[PROMISE REJECTION] Promise rejeitada:", event.reason);
+    AsyncStorage.setItem(
+      "lastPromiseRejection",
+      JSON.stringify({
+        reason: event.reason?.toString(),
+        timestamp: new Date().toISOString(),
+      })
+    );
+  };
+
+  if (typeof global !== "undefined" && global.addEventListener) {
+    global.addEventListener("unhandledrejection", handleUnhandledRejection);
+  }
+};
+
 // Configuração de notificações Expo
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -156,6 +191,9 @@ const App = () => {
   useEffect(() => {
     console.log("[Debug] 🚀 App iniciando...");
 
+    // Inicializar captura de erros
+    setupErrorHandling();
+
     // Função para inicializar de forma segura
     const initializeApp = async () => {
       try {
@@ -164,25 +202,81 @@ const App = () => {
         console.log("[Debug] ✅ Permissões configuradas");
       } catch (error) {
         console.error("[Debug] ❌ Erro ao inicializar app:", error);
+        // Salvar erro para debug
+        AsyncStorage.setItem(
+          "initError",
+          JSON.stringify({
+            error: error.toString(),
+            timestamp: new Date().toISOString(),
+          })
+        );
       }
     };
 
     // Chamar inicialização
-    initializeApp(); // Configurar listeners FCM
+    initializeApp();
+
+    // Configurar listeners FCM com captura de erro robusta
     let unsubscribe;
 
     try {
-      console.log("Configurando listener FCM...");
+      console.log("[Debug] Configurando listener FCM...");
 
-      // Listener FCM mais simples possivel
+      // Listener FCM com tratamento de erro abrangente
       unsubscribe = messaging().onMessage(async (remoteMessage) => {
-        console.log("FCM Message recebida!");
-        console.log("remoteMessage:", remoteMessage);
+        try {
+          console.log("[FCM] ✅ Mensagem recebida!");
+          console.log(
+            "[FCM] Payload completo:",
+            JSON.stringify(remoteMessage, null, 2)
+          );
+
+          // Salvar mensagem para debug
+          await AsyncStorage.setItem(
+            "lastFcmMessage",
+            JSON.stringify({
+              message: remoteMessage,
+              timestamp: new Date().toISOString(),
+            })
+          );
+
+          // Verificar estrutura da mensagem
+          if (remoteMessage.notification) {
+            console.log("[FCM] Notificação:", remoteMessage.notification);
+          }
+          if (remoteMessage.data) {
+            console.log("[FCM] Dados:", remoteMessage.data);
+          }
+
+          console.log("[FCM] ✅ Mensagem processada com sucesso!");
+        } catch (error) {
+          console.error("[FCM] ❌ ERRO ao processar mensagem:", error);
+          // Salvar erro específico do FCM
+          await AsyncStorage.setItem(
+            "fcmError",
+            JSON.stringify({
+              error: error.toString(),
+              stack: error.stack,
+              message: remoteMessage,
+              timestamp: new Date().toISOString(),
+            })
+          );
+
+          // Re-throw para capturar no handler global se necessário
+          throw error;
+        }
       });
 
-      console.log("Listener FCM configurado com sucesso");
+      console.log("[Debug] ✅ Listener FCM configurado com sucesso");
     } catch (error) {
-      console.log("Erro ao configurar listener FCM:", error);
+      console.error("[Debug] ❌ Erro ao configurar listener FCM:", error);
+      AsyncStorage.setItem(
+        "fcmListenerError",
+        JSON.stringify({
+          error: error.toString(),
+          timestamp: new Date().toISOString(),
+        })
+      );
     }
 
     // Listener para quando o usuário toca na notificação local (Expo Notifications)
@@ -258,8 +352,176 @@ const App = () => {
     }
   }
 
+  // Componente de debug para mostrar logs de erro
+  const DebugPanel = () => {
+    const [debugInfo, setDebugInfo] = useState(null);
+    const [showDebug, setShowDebug] = useState(false);
+
+    const loadDebugInfo = async () => {
+      try {
+        const [lastError, fcmError, lastMessage, promiseRejection] =
+          await Promise.all([
+            AsyncStorage.getItem("lastError"),
+            AsyncStorage.getItem("fcmError"),
+            AsyncStorage.getItem("lastFcmMessage"),
+            AsyncStorage.getItem("lastPromiseRejection"),
+          ]);
+
+        setDebugInfo({
+          lastError: lastError ? JSON.parse(lastError) : null,
+          fcmError: fcmError ? JSON.parse(fcmError) : null,
+          lastMessage: lastMessage ? JSON.parse(lastMessage) : null,
+          promiseRejection: promiseRejection
+            ? JSON.parse(promiseRejection)
+            : null,
+        });
+      } catch (error) {
+        console.error("Erro ao carregar debug info:", error);
+      }
+    };
+
+    const clearDebugInfo = async () => {
+      await AsyncStorage.multiRemove([
+        "lastError",
+        "fcmError",
+        "lastFcmMessage",
+        "lastPromiseRejection",
+      ]);
+      setDebugInfo(null);
+    };
+
+    if (!showDebug) {
+      return (
+        <View
+          style={{ position: "absolute", top: 50, right: 10, zIndex: 1000 }}
+        >
+          <Button
+            title="Debug"
+            onPress={() => {
+              setShowDebug(true);
+              loadDebugInfo();
+            }}
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          zIndex: 1000,
+          padding: 20,
+        }}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "white",
+            padding: 10,
+            marginTop: 50,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              marginBottom: 10,
+            }}
+          >
+            <Button title="Fechar" onPress={() => setShowDebug(false)} />
+            <Button title="Limpar" onPress={clearDebugInfo} />
+            <Button title="Reload" onPress={loadDebugInfo} />
+          </View>
+
+          <Text style={{ fontSize: 16, fontWeight: "bold", marginBottom: 10 }}>
+            Debug FCM Crash
+          </Text>
+
+          {debugInfo ? (
+            <View style={{ flex: 1 }}>
+              {debugInfo.fcmError && (
+                <View
+                  style={{
+                    marginBottom: 15,
+                    padding: 10,
+                    backgroundColor: "#ffebee",
+                  }}
+                >
+                  <Text style={{ fontWeight: "bold", color: "red" }}>
+                    FCM Error:
+                  </Text>
+                  <Text style={{ fontSize: 12, marginTop: 5 }}>
+                    {debugInfo.fcmError.error}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: "gray" }}>
+                    {debugInfo.fcmError.timestamp}
+                  </Text>
+                </View>
+              )}
+
+              {debugInfo.lastError && (
+                <View
+                  style={{
+                    marginBottom: 15,
+                    padding: 10,
+                    backgroundColor: "#fff3e0",
+                  }}
+                >
+                  <Text style={{ fontWeight: "bold", color: "orange" }}>
+                    Last Error:
+                  </Text>
+                  <Text style={{ fontSize: 12, marginTop: 5 }}>
+                    {debugInfo.lastError.error}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: "gray" }}>
+                    {debugInfo.lastError.timestamp}
+                  </Text>
+                </View>
+              )}
+
+              {debugInfo.lastMessage && (
+                <View
+                  style={{
+                    marginBottom: 15,
+                    padding: 10,
+                    backgroundColor: "#e8f5e8",
+                  }}
+                >
+                  <Text style={{ fontWeight: "bold", color: "green" }}>
+                    Last FCM Message:
+                  </Text>
+                  <Text style={{ fontSize: 10, marginTop: 5 }}>
+                    {JSON.stringify(debugInfo.lastMessage.message, null, 2)}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: "gray" }}>
+                    {debugInfo.lastMessage.timestamp}
+                  </Text>
+                </View>
+              )}
+
+              {!debugInfo.fcmError && !debugInfo.lastError && (
+                <Text>
+                  Nenhum erro encontrado. Teste enviar uma notificação FCM!
+                </Text>
+              )}
+            </View>
+          ) : (
+            <Text>Carregando debug info...</Text>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#3578e5" }}>
+      <DebugPanel />
       <NavigationContainer>
         <Stack.Navigator>
           {session ? (
